@@ -328,10 +328,10 @@ gbp_flatpak_runtime_provider_find_flatpak_manifests (GbpFlatpakRuntimeProvider *
       sdk_node = json_object_get_member (root_object, "sdk");
       modules_node = json_object_get_member (root_object, "modules");
 
-      if ((!JSON_NODE_HOLDS_VALUE (app_id_node) && !JSON_NODE_HOLDS_VALUE (id_node)) ||
-           !JSON_NODE_HOLDS_VALUE (runtime_node) ||
-           !JSON_NODE_HOLDS_VALUE (sdk_node) ||
-           !JSON_NODE_HOLDS_ARRAY (modules_node))
+      if (((app_id_node == NULL || !JSON_NODE_HOLDS_VALUE (app_id_node)) && (id_node == NULL || !JSON_NODE_HOLDS_VALUE (id_node))) ||
+          (runtime_node == NULL || !JSON_NODE_HOLDS_VALUE (runtime_node)) ||
+          (sdk_node == NULL || !JSON_NODE_HOLDS_VALUE (sdk_node)) ||
+          (modules_node == NULL || !JSON_NODE_HOLDS_ARRAY (modules_node)))
         continue;
 
       IDE_TRACE_MSG ("Discovered flatpak manifest at %s", path);
@@ -344,7 +344,7 @@ gbp_flatpak_runtime_provider_find_flatpak_manifests (GbpFlatpakRuntimeProvider *
       else
         manifest->branch = json_node_dup_string (runtime_version_node);
       manifest->sdk = json_node_dup_string (sdk_node);
-      if (JSON_NODE_HOLDS_VALUE (app_id_node))
+      if (app_id_node != NULL && JSON_NODE_HOLDS_VALUE (app_id_node))
         manifest->app_id = json_node_dup_string (app_id_node);
       else
         manifest->app_id = json_node_dup_string (id_node);

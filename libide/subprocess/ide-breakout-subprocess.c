@@ -363,8 +363,17 @@ communicate_result_validate_utf8 (const char            *stream_name,
   if (buffer)
     {
       const char *end;
+      GError *local_error = NULL;
+
       if (!g_output_stream_is_closed (G_OUTPUT_STREAM (buffer)))
-        g_output_stream_close (G_OUTPUT_STREAM (buffer), NULL, NULL);
+        g_output_stream_close (G_OUTPUT_STREAM (buffer), NULL, &local_error);
+
+      if (local_error != NULL)
+        {
+          g_propagate_error (error, local_error);
+          IDE_RETURN (FALSE);
+        }
+
       *return_location = g_memory_output_stream_steal_data (buffer);
       if (!g_utf8_validate (*return_location, -1, &end))
         {
@@ -663,6 +672,8 @@ ide_subprocess_communicate_made_progress (GObject      *source_object,
   gpointer source;
   GTask *task;
 
+  IDE_ENTRY;
+
   g_assert (source_object != NULL);
 
   task = user_data;
@@ -726,6 +737,8 @@ ide_subprocess_communicate_made_progress (GObject      *source_object,
 
   /* And drop the original ref */
   g_object_unref (task);
+
+  IDE_EXIT;
 }
 
 static CommunicateState *
@@ -762,6 +775,14 @@ ide_breakout_subprocess_communicate_internal (IdeBreakoutSubprocess *subprocess,
       g_source_attach (state->cancellable_source, g_main_context_get_thread_default ());
     }
 
+  /* Increment the outstanding ops count, to protect from reentrancy */
+  if (subprocess->stdin_pipe)
+    state->outstanding_ops++;
+  if (subprocess->stdout_pipe)
+    state->outstanding_ops++;
+  if (subprocess->stderr_pipe)
+    state->outstanding_ops++;
+
   if (subprocess->stdin_pipe)
     {
       g_assert (stdin_buf != NULL);
@@ -770,7 +791,6 @@ ide_breakout_subprocess_communicate_internal (IdeBreakoutSubprocess *subprocess,
                                     G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
                                     G_PRIORITY_DEFAULT, state->cancellable,
                                     ide_subprocess_communicate_made_progress, g_object_ref (task));
-      state->outstanding_ops++;
     }
 
   if (subprocess->stdout_pipe)
@@ -780,7 +800,6 @@ ide_breakout_subprocess_communicate_internal (IdeBreakoutSubprocess *subprocess,
                                     G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                                     G_PRIORITY_DEFAULT, state->cancellable,
                                     ide_subprocess_communicate_made_progress, g_object_ref (task));
-      state->outstanding_ops++;
     }
 
   if (subprocess->stderr_pipe)
@@ -790,7 +809,6 @@ ide_breakout_subprocess_communicate_internal (IdeBreakoutSubprocess *subprocess,
                                     G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                                     G_PRIORITY_DEFAULT, state->cancellable,
                                     ide_subprocess_communicate_made_progress, g_object_ref (task));
-      state->outstanding_ops++;
     }
 
   ide_subprocess_wait_async (IDE_SUBPROCESS (subprocess), state->cancellable,
