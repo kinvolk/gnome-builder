@@ -39,7 +39,7 @@
                 "/share/pkgconfig", "/share/aclocal",
                 "/share/mm-common", "/bin/mm-*",
                 "/man", "/share/man", "/share/gtk-doc",
-                "/share/doc", "/share/vala", "/share/appdata",
+                "/share/doc", "/share/vala",
                 "/share/bash-completions",
                 "/lib/sigc++-2.0", "/lib/glibmm-2.4", "/lib/giomm-2.4",
                 "*.la", "*.a"],
