@@ -2,9 +2,8 @@ SUBDIRS = gsettings icons style-schemes fonts .
 
 @APPSTREAM_XML_RULES@
 
-appstreamdir = $(datadir)/appdata
-appstream_DATA = $(appstream_in_files:.xml.in=.xml)
 appstream_in_files = org.gnome.Builder.appdata.xml.in
+appstream_XML = $(appstream_in_files:.xml.in=.xml)
 
 %.appdata.xml: %.appdata.xml.in
 	$(AM_V_GEN)$(MSGFMT) --xml --template $< -d $(top_srcdir)/po -o $@
@@ -41,7 +40,7 @@ EXTRA_DIST = \
 	$(NULL)
 
 CLEANFILES = \
-	$(appstream_DATA) \
+	$(appstream_XML) \
 	$(desktop_DATA) \
 	$(desktop_in_files) \
 	$(service_DATA) \
