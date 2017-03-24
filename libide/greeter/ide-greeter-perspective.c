@@ -784,6 +784,60 @@ ide_greeter_perspective_cancel_clicked (IdeGreeterPerspective *self,
   ide_greeter_perspective_apply_filter_all (self);
 }
 
+static void
+get_genesis_addin_ready_project (PeasExtensionSet *set,
+                                 PeasPluginInfo   *plugin_info,
+                                 PeasExtension    *exten,
+                                 gpointer          user_data)
+{
+  IdeGenesisAddin *addin = (IdeGenesisAddin *)exten;
+  struct {
+    GFile **project_file_ptr;
+    const gchar *name;
+  } *state = user_data;
+
+  g_assert (PEAS_IS_EXTENSION_SET (set));
+  g_assert (IDE_IS_GENESIS_ADDIN (addin));
+  g_assert (state != NULL);
+  g_assert (state->project_file_ptr != NULL);
+  g_assert (state->name != NULL);
+
+  if (g_strcmp0 (state->name, G_OBJECT_TYPE_NAME (addin)) == 0)
+    {
+      g_assert (*(state->project_file_ptr) == NULL);
+      *(state->project_file_ptr) = ide_genesis_addin_get_ready_project (addin);
+    }
+}
+
+static gboolean
+take_shortcut_to_project (IdeGreeterPerspective *self,
+                          const gchar           *genesis_addin_name)
+{
+  g_autoptr(GFile) ready_project_file = NULL;
+  struct {
+    GFile **project_file_ptr;
+    const gchar *name;
+  } state = { 0 };
+
+  state.project_file_ptr = &ready_project_file;
+  state.name = genesis_addin_name;
+  peas_extension_set_foreach (self->genesis_set,
+                              get_genesis_addin_ready_project,
+                              &state);
+  if (ready_project_file != NULL)
+    {
+      IdeWorkbench *workbench = ide_widget_get_workbench (GTK_WIDGET (self));
+
+      g_assert (workbench != NULL);
+      ide_workbench_open_project_async (workbench,
+                                        ready_project_file,
+                                        NULL, NULL, NULL);
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
 void
 ide_greeter_perspective_show_genesis_view (IdeGreeterPerspective *self,
                                            const gchar           *genesis_addin_name,
@@ -794,13 +848,17 @@ ide_greeter_perspective_show_genesis_view (IdeGreeterPerspective *self,
   g_assert (IDE_IS_GREETER_PERSPECTIVE (self));
 
   addin = gtk_stack_get_child_by_name (self->genesis_stack, genesis_addin_name);
+  if (manifest != NULL)
+    g_object_set (addin, "manifest", manifest, NULL);
+
+  if (take_shortcut_to_project (self, genesis_addin_name))
+    return;
+
   gtk_stack_set_visible_child (self->genesis_stack, addin);
   egg_state_machine_set_state (self->state_machine, "genesis");
 
   if (manifest != NULL)
     {
-      g_object_set (addin, "manifest", manifest, NULL);
-
       gtk_widget_hide (GTK_WIDGET (self->genesis_continue_button));
       ide_greeter_perspective_genesis_continue (self);
     }

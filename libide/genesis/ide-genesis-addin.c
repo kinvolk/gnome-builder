@@ -114,3 +114,19 @@ ide_genesis_addin_get_next_label (IdeGenesisAddin *self)
 
   return NULL;
 }
+
+/**
+ * ide_genesis_addin_get_ready_project:
+ *
+ * Returns: (transfer full): A #GFile.
+ */
+GFile *
+ide_genesis_addin_get_ready_project (IdeGenesisAddin *self)
+{
+  g_return_val_if_fail (IDE_IS_GENESIS_ADDIN (self), NULL);
+
+  if (IDE_GENESIS_ADDIN_GET_IFACE (self)->get_ready_project)
+    return IDE_GENESIS_ADDIN_GET_IFACE (self)->get_ready_project (self);
+
+  return NULL;
+}
