@@ -27,13 +27,14 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (GbpFlatpakCloneWidget, gbp_flatpak_clone_widget, GBP, FLATPAK_CLONE_WIDGET, GtkBin)
 
-void     gbp_flatpak_clone_widget_clone_async  (GbpFlatpakCloneWidget *self,
-                                                GCancellable          *cancellable,
-                                                GAsyncReadyCallback    callback,
-                                                gpointer               user_data);
-gboolean gbp_flatpak_clone_widget_clone_finish (GbpFlatpakCloneWidget *self,
-                                                GAsyncResult          *result,
-                                                GError               **error);
+void      gbp_flatpak_clone_widget_clone_async       (GbpFlatpakCloneWidget *self,
+                                                      GCancellable          *cancellable,
+                                                      GAsyncReadyCallback    callback,
+                                                      gpointer               user_data);
+gboolean  gbp_flatpak_clone_widget_clone_finish      (GbpFlatpakCloneWidget *self,
+                                                      GAsyncResult          *result,
+                                                      GError               **error);
+GFile    *gbp_flatpak_clone_widget_get_ready_project (GbpFlatpakCloneWidget *self);
 
 G_END_DECLS
 

@@ -190,6 +190,18 @@ gbp_flatpak_genesis_addin_get_next_label (IdeGenesisAddin *addin)
   return g_strdup (_("Clone"));
 }
 
+static GFile *
+gbp_flatpak_genesis_addin_get_ready_project (IdeGenesisAddin *addin)
+{
+  GbpFlatpakGenesisAddin *self = GBP_FLATPAK_GENESIS_ADDIN(addin);
+
+  g_assert (self != NULL);
+  if (self->clone_widget == NULL)
+    return NULL;
+
+  return gbp_flatpak_clone_widget_get_ready_project (self->clone_widget);
+}
+
 static void
 genesis_addin_iface_init (IdeGenesisAddinInterface *iface)
 {
@@ -201,4 +213,5 @@ genesis_addin_iface_init (IdeGenesisAddinInterface *iface)
   iface->get_priority = gbp_flatpak_genesis_addin_get_priority;
   iface->get_label = gbp_flatpak_genesis_addin_get_label;
   iface->get_next_label = gbp_flatpak_genesis_addin_get_next_label;
+  iface->get_ready_project = gbp_flatpak_genesis_addin_get_ready_project;
 }

@@ -659,3 +659,45 @@ gbp_flatpak_clone_widget_clone_finish (GbpFlatpakCloneWidget *self,
 
   return g_task_propagate_boolean (G_TASK (result), error);
 }
+
+GFile *
+gbp_flatpak_clone_widget_get_ready_project (GbpFlatpakCloneWidget *self)
+{
+  ModuleSource *src = get_source (self, NULL);
+  g_autoptr(GFile) destination = NULL;
+  g_autoptr(GFile) workdir = NULL;
+  g_autoptr(GFile) manifest = NULL;
+  g_autofree gchar *manifest_file_name = NULL;
+
+  if (src == NULL)
+    return NULL;
+
+  destination = get_destination (src);
+  if (src->type == TYPE_GIT)
+    {
+      g_autoptr(GgitRepository) repository = NULL;
+
+      repository = ggit_repository_open (destination, NULL);
+
+      if (repository == NULL)
+        return NULL;
+
+      workdir = ggit_repository_get_workdir (repository);
+    }
+  else if (src->type == TYPE_ARCHIVE)
+    {
+      workdir = g_file_get_child (destination, src->name);
+    }
+
+  module_source_free (src);
+  if (workdir == NULL)
+    return NULL;
+
+  manifest_file_name = g_strjoin (".", self->id, "json", NULL);
+  manifest = g_file_get_child (workdir, manifest_file_name);
+
+  if (g_file_query_exists (manifest, NULL))
+    return g_steal_pointer (&workdir);
+
+  return NULL;
+}
