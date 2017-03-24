@@ -37,7 +37,6 @@ struct _GbpFlatpakCloneWidget
   guint           is_ready : 1;
 
   gchar          *app_id_override;
-  gchar          *child_name;
   gchar          *id;
   gchar          *manifest;
 
@@ -152,7 +151,6 @@ gbp_flatpak_clone_widget_finalize (GObject *object)
   GbpFlatpakCloneWidget *self = (GbpFlatpakCloneWidget *)object;
 
   g_clear_pointer (&self->app_id_override, g_free);
-  g_clear_pointer (&self->child_name, g_free);
   g_clear_pointer (&self->id, g_free);
   g_clear_pointer (&self->manifest, g_free);
 
@@ -569,53 +567,29 @@ get_source (GbpFlatpakCloneWidget  *self,
   return src;
 }
 
-void
-gbp_flatpak_clone_widget_clone_async (GbpFlatpakCloneWidget   *self,
-                                      GCancellable            *cancellable,
-                                      GAsyncReadyCallback      callback,
-                                      gpointer                 user_data)
+static GFile *
+get_destination (ModuleSource *src)
 {
-  g_autoptr(GTask) task = NULL;
-  g_autoptr(GSettings) settings = NULL;
   g_autoptr(GFile) destination = NULL;
+  g_autofree gchar *child_name = NULL;
+  g_autoptr(GSettings) settings = NULL;
   g_autofree gchar *path = NULL;
   g_autofree gchar *projects_dir = NULL;
-  DownloadRequest *req;
-  ModuleSource *src;
-  GError *error = NULL;
-
-  g_return_if_fail (GBP_IS_FLATPAK_CLONE_WIDGET (self));
-  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
-
-  task = g_task_new (self, cancellable, callback, user_data);
-
-  src = get_source (self, &error);
-  if (src == NULL)
-    {
-      g_task_return_error (task, error);
-      return;
-    }
 
   if (src->uri != NULL && src->type == TYPE_GIT)
     {
       const gchar *uri_path;
-      gchar *name = NULL;
 
       uri_path = ide_vcs_uri_get_path (src->uri);
       if (uri_path != NULL)
         {
-          name = g_path_get_basename (uri_path);
+          g_autofree gchar *name = g_path_get_basename (uri_path);
 
           if (g_str_has_suffix (name, ".git"))
             *(strrchr (name, '.')) = '\0';
 
           if (!g_str_equal (name, "/"))
-            {
-              g_free (self->child_name);
-              self->child_name = g_steal_pointer (&name);
-            }
-
-          g_free (name);
+            child_name = g_steal_pointer (&name);
         }
     }
 
@@ -632,12 +606,37 @@ gbp_flatpak_clone_widget_clone_async (GbpFlatpakCloneWidget   *self,
 
   destination = g_file_new_for_path (projects_dir);
 
-  if (self->child_name)
+  if (child_name)
+    return g_file_get_child (destination, child_name);
+
+  return g_steal_pointer (&destination);
+}
+
+void
+gbp_flatpak_clone_widget_clone_async (GbpFlatpakCloneWidget   *self,
+                                      GCancellable            *cancellable,
+                                      GAsyncReadyCallback      callback,
+                                      gpointer                 user_data)
+{
+  g_autoptr(GTask) task = NULL;
+  g_autoptr(GFile) destination = NULL;
+  DownloadRequest *req;
+  ModuleSource *src;
+  GError *error = NULL;
+
+  g_return_if_fail (GBP_IS_FLATPAK_CLONE_WIDGET (self));
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+
+  task = g_task_new (self, cancellable, callback, user_data);
+
+  src = get_source (self, &error);
+  if (src == NULL)
     {
-      g_autoptr(GFile) child = g_file_get_child (destination, self->child_name);
-      g_set_object (&destination, child);
+      g_task_return_error (task, error);
+      return;
     }
 
+  destination = get_destination (src);
   req = download_request_new (src, destination);
 
   g_task_set_task_data (task, req, download_request_free);
