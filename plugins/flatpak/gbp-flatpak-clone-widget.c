@@ -493,6 +493,7 @@ get_source (GbpFlatpakCloneWidget  *self,
   ModuleSource *src;
   g_autoptr(IdeVcsUri) uri = NULL;
   GPtrArray *patches;
+  g_autofree gchar *id = NULL;
 
   parser = json_parser_new ();
   if (!json_parser_load_from_file (parser, self->manifest, error))
@@ -503,11 +504,11 @@ get_source (GbpFlatpakCloneWidget  *self,
   root_object = json_node_get_object (root_node);
 
   if (json_object_has_member (root_object, "app-id"))
-    self->id = g_strdup (json_object_get_string_member (root_object, "app-id"));
+    id = g_strdup (json_object_get_string_member (root_object, "app-id"));
   else if (json_object_has_member (root_object, "id"))
-    self->id = g_strdup (json_object_get_string_member (root_object, "id"));
+    id = g_strdup (json_object_get_string_member (root_object, "id"));
 
-  if (self->id == NULL)
+  if (id == NULL)
     {
       g_set_error (error,
                    G_IO_ERROR,
@@ -564,6 +565,8 @@ get_source (GbpFlatpakCloneWidget  *self,
   g_ptr_array_add (patches, NULL);
   src->patches = (gchar **) g_ptr_array_free (patches, FALSE);
 
+  g_free (self->id);
+  self->id = g_steal_pointer (&id);
   return src;
 }
 
